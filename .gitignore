@@ -1,0 +1,23 @@
+# Racine du depot.
+# Les dossiers backend/ et frontend/ possedent leur propre .gitignore
+# (dependances, cache, .env locaux y sont deja ignores).
+
+# --- Variables d'environnement locales (le modele .env.example reste versionne) ---
+/.env
+/.env.local
+/.env.*.local
+
+# --- Editeurs / IDE ---
+/.vscode/
+/.idea/
+*.swp
+*.swo
+*~
+
+# --- Fichiers d'OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Divers ---
+*.log

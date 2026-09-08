@@ -1,0 +1,5 @@
+.git
+backend/vendor
+backend/var
+frontend/node_modules
+frontend/.next

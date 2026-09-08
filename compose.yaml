@@ -1,0 +1,88 @@
+# Environnement de developpement local - template Next.js + Symfony
+#
+# 3 services, pas un de plus :
+#   database  : PostgreSQL 16, donnees conservees dans un volume Docker
+#   backend   : Symfony + API Platform, servis par FrankenPHP
+#   frontend  : Next.js (TypeScript) en mode developpement, avec hot reload
+#
+# Le code source vit sur la machine hote (./backend et ./frontend) et est monte
+# dans les conteneurs : modifier le code ne demande PAS de reconstruire les
+# images. Les dependances installees (vendor, node_modules) et le cache Symfony
+# sont places dans des volumes Docker : c'est indispensable pour de bonnes
+# performances sous Windows, et ca evite que le dossier de l'hote ne les masque.
+#
+# Le nom du projet Docker (prefixe des conteneurs et des volumes) est
+# automatiquement celui du dossier qui contient ce fichier. Pour le forcer,
+# ajouter une ligne "name: mon-projet" ici ou definir COMPOSE_PROJECT_NAME.
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      # Acces local optionnel (DBeaver, pgAdmin...). Lie a 127.0.0.1 : jamais
+      # accessible depuis l'exterieur de la machine.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    environment:
+      # FrankenPHP ecoute en HTTP simple sur le port 80 (pas de HTTPS en local).
+      SERVER_NAME: ":80"
+      APP_ENV: dev
+      # Cle interne Symfony (signature CSRF, etc.). Valeur de dev fournie par
+      # .env (non versionne). En production : vraie valeur via l'environnement.
+      APP_SECRET: ${APP_SECRET}
+      # Connexion a PostgreSQL par le reseau Docker : l'hote est le nom du
+      # service ("database"), pas "localhost".
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8"
+    volumes:
+      - ./backend:/app                 # code source (edite depuis l'hote)
+      - backend_vendor:/app/vendor     # dependances PHP (Composer)
+      - backend_var:/app/var           # cache et logs Symfony
+    ports:
+      - "${BACKEND_PORT:-8000}:80"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    environment:
+      # URL de l'API vue depuis le NAVIGATEUR de l'utilisateur.
+      NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
+      # URL de l'API vue depuis le conteneur Next.js (rendu cote serveur).
+      INTERNAL_API_URL: "http://backend"
+      # Rend le hot reload fiable quand le code est monte depuis Windows :
+      # Next.js tourne avec webpack (voir script "dev") qui surveille les
+      # fichiers par scrutation toutes les 1000 ms.
+      WATCHPACK_POLLING: "1000"
+    volumes:
+      - ./frontend:/app                    # code source (edite depuis l'hote)
+      - frontend_node_modules:/app/node_modules   # dependances JS (pnpm)
+      - frontend_next:/app/.next                  # cache de build de Next.js
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  database_data:
+  backend_vendor:
+  backend_var:
+  frontend_node_modules:
+  frontend_next:

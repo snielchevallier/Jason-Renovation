@@ -1,0 +1,11 @@
+# Normalise les fins de ligne : LF dans le depot, quel que soit l'OS.
+* text=auto eol=lf
+
+# Fichiers binaires (jamais convertis)
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
