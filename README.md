@@ -43,7 +43,13 @@ docker compose up -d
 
 # 6. Creer le schema de base de donnees
 docker compose exec backend php bin/console doctrine:migrations:migrate --no-interaction
+
+# 7. Charger le jeu de donnees de developpement (PURGE la base puis reinsere)
+docker compose exec backend php bin/console doctrine:fixtures:load --no-interaction
 ```
+
+Compte administrateur de developpement cree par les fixtures :
+`admin@jc-reno.com` / `Password!`.
 
 Verifications rapides :
 
@@ -176,8 +182,10 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Domaine | Etat |
 |---------|------|
 | Environnement Docker (3 services)         | ✅ operationnel |
-| Auth API : entite User, login JWT, firewall `/api` stateless, deny-by-default | 🚧 en cours (Phase 1) |
+| Auth API : entite User, login JWT, firewall `/api` stateless, deny-by-default | ✅ fait |
 | Firewall `/admin` (form login sur `/login`, `ROLE_ADMIN`, page placeholder) | ✅ fait |
+| Anti brute-force (login throttling, 429) | ✅ fait |
+| Fixtures de developpement (compte admin) | ✅ fait |
 | Entites de reference (Entreprise, TVA, Unite) | ⬜ a faire |
 | Module d'administration (EasyAdmin)       | ⬜ a faire |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
