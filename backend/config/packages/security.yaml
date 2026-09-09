@@ -27,7 +27,11 @@ security:
                 username_path: email
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
-                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+                failure_handler: App\Security\ApiAuthenticationFailureHandler
+            # Anti brute-force : 5 tentatives / minute par (IP + identifiant),
+            # et un plafond global par IP (5 x max_attempts). Au-dela : HTTP 429.
+            login_throttling:
+                max_attempts: 5
 
         # Toutes les autres routes /api : authentification par token JWT, sans session.
         api:
@@ -47,6 +51,9 @@ security:
                 default_target_path: admin_home
             logout:
                 path: app_logout
+            # Meme protection anti brute-force que /api/login.
+            login_throttling:
+                max_attempts: 5
 
     # Note: Only the *first* matching rule is applied
     access_control:

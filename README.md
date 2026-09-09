@@ -103,7 +103,9 @@ d'entree de l'API est `/api`. Ces ports sont configurables dans `.env`.
 Deux firewalls distincts, un par usage.
 
 **API (`/api/*`)** — jeton JWT, sans session, deny-by-default. Seuls `/api/login`
-et `/api/docs` sont publics.
+et `/api/docs` sont publics. `/api/login` est protege contre le brute-force :
+au-dela de 5 tentatives echouees par minute (par IP + identifiant), reponse
+`429 Too Many Requests`. Meme protection sur le formulaire `/login`.
 
 ```bash
 # 1. Obtenir un token
