@@ -45,6 +45,14 @@ services:
       # Cle interne Symfony (signature CSRF, etc.). Valeur de dev fournie par
       # .env (non versionne). En production : vraie valeur via l'environnement.
       APP_SECRET: ${APP_SECRET}
+      # Passphrase de la cle privee JWT (Lexik). Meme logique que APP_SECRET :
+      # valeur de dev fournie par .env (non versionne), vraie valeur via
+      # l'environnement du serveur en production. Doit correspondre a la
+      # passphrase utilisee pour generer backend/config/jwt/*.pem.
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE}
+      # Origine autorisee par CORS : le frontend Next.js, sur son port hote.
+      # Reste synchronise avec FRONTEND_PORT (comme NEXT_PUBLIC_API_URL cote frontend).
+      CORS_ALLOW_ORIGIN: "http://localhost:${FRONTEND_PORT:-3000}"
       # Connexion a PostgreSQL par le reseau Docker : l'hote est le nom du
       # service ("database"), pas "localhost".
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8"
