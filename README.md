@@ -157,9 +157,11 @@ par Docker Compose. `.env` n'est **pas** versionne.
 | `BACKEND_PORT`        | port de l'API sur l'hote                         | `8000` |
 | `POSTGRES_PORT`       | port PostgreSQL sur l'hote                       | `5432` |
 
-`DATABASE_URL` et `NEXT_PUBLIC_API_URL` sont construites automatiquement dans
-`compose.yaml` a partir des variables ci-dessus. En production, ces valeurs sont
-fournies par le serveur, jamais par Git.
+`DATABASE_URL`, `NEXT_PUBLIC_API_URL` et `CORS_ALLOW_ORIGIN` sont construites
+automatiquement dans `compose.yaml` a partir des variables ci-dessus
+(`CORS_ALLOW_ORIGIN = http://localhost:<FRONTEND_PORT>`, seule origine acceptee
+par l'API en CORS). En production, ces valeurs sont fournies par le serveur,
+jamais par Git.
 
 ## 8. Versions
 

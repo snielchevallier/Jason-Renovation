@@ -1,10 +1,19 @@
 nelmio_cors:
+    # Par defaut : aucune origine autorisee. Le CORS n'est accorde que sur les
+    # chemins listes dans "paths" ci-dessous.
     defaults:
-        origin_regex: true
-        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
-        allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
-        allow_headers: ['Content-Type', 'Authorization']
-        expose_headers: ['Link']
-        max_age: 3600
+        origin_regex: false
+        allow_origin: []
+        allow_methods: []
+        allow_headers: []
+        max_age: 0
     paths:
-        '^/': null
+        # Seule surface appelee par le navigateur depuis une autre origine
+        # (le frontend Next.js). Le back-office /admin est servi en direct.
+        '^/api':
+            origin_regex: false
+            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+            allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
+            allow_headers: ['Content-Type', 'Authorization']
+            expose_headers: ['Link']
+            max_age: 3600
