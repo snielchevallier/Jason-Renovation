@@ -1,6 +1,9 @@
-# CLAUDE.md — Template Next.js + Symfony
+# CLAUDE.md — Jason Renovation (application de creation de devis)
 
-Guide de travail pour Claude Code sur les projets bases sur ce template.
+Guide de travail pour Claude Code. Application web de redaction et de suivi des
+devis d'une entreprise de renovation, batie sur une base Next.js + Symfony +
+Docker. Vue d'ensemble utilisateur : `README.md`. Conventions backend :
+`backend/CLAUDE.md`.
 
 ## Regles imperatives du projet
 
@@ -35,9 +38,11 @@ Ces regles priment sur tout comportement par defaut.
 
 ## Vue d'ensemble
 
-Base de depart pour une application web : frontend Next.js, backend Symfony +
-API Platform, PostgreSQL, le tout orchestre par un unique `compose.yaml`.
-Le template ne contient aucune logique metier.
+Frontend Next.js, backend Symfony + API Platform, PostgreSQL, orchestres par un
+unique `compose.yaml`. Perimetre metier : clients et chantiers, catalogue de
+prestations, redaction de devis (lignes, TVA multi-taux, totaux), cycle de vie
+du devis, parametres de l'entreprise, back-office d'administration. PDF et envoi
+au client viendront ensuite.
 
 ## Architecture reelle
 
@@ -78,9 +83,11 @@ Figees par `backend/composer.lock` et `frontend/pnpm-lock.yaml`.
 ## Ports
 
 - Frontend : http://localhost:3000
-- API : http://localhost:8000 — point d'entree API Platform : http://localhost:8000/api
-- `http://localhost:8000/` = 404 attendu (pas de route racine)
-- PostgreSQL : `127.0.0.1:5432` (non expose hors machine)
+- API : http://localhost:8000/api — **protegee par JWT** (deny-by-default).
+  Publics : `POST /api/login` et `/api/docs` (Swagger UI).
+- Back-office : http://localhost:8000/login (formulaire) -> `/admin` (`ROLE_ADMIN`).
+- `http://localhost:8000/` = 404 attendu (pas de route racine).
+- PostgreSQL : `127.0.0.1:5432` (non expose hors machine).
 
 ## Commandes reellement disponibles
 
@@ -98,18 +105,25 @@ docker compose exec backend composer <cmd>
 docker compose exec frontend pnpm <cmd>
 docker compose exec backend sh       # shell dans le conteneur
 
-# Installation initiale des dependances (dans les volumes) :
+# Installation initiale (dans les volumes) :
 docker compose run --rm --no-deps backend composer install
 docker compose run --rm --no-deps frontend pnpm install
+docker compose run --rm --no-deps backend php bin/console lexik:jwt:generate-keypair
+docker compose exec backend php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec backend php bin/console doctrine:fixtures:load --no-interaction
 ```
 
 Verifications utiles :
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/api             # 200
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/api/docs.jsonld # 200
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000                 # 200
-docker compose exec -T backend php bin/console dbal:run-sql "SELECT 1"         # connexion DB
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/api/docs.jsonld  # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/api              # 401 (JWT requis)
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000                  # 200
+docker compose exec -T backend php bin/console dbal:run-sql "SELECT 1"          # connexion DB
+
+# Connexion (compte admin des fixtures) -> doit renvoyer un token :
+curl -s -X POST http://localhost:8000/api/login -H "Content-Type: application/json" \
+  -d '{"email":"admin@jc-reno.com","password":"Password!"}'
 ```
 
 ## Conventions importantes
@@ -134,33 +148,53 @@ docker compose exec -T backend php bin/console dbal:run-sql "SELECT 1"         #
 - Ajouter un second frontend = un nouveau service dans `compose.yaml` sur le
   modele de `frontend` (autre dossier, autre port, meme Dockerfile).
 
+## Authentification
+
+Deux firewalls (`backend/config/packages/security.yaml`) :
+
+| Firewall | Portee | Auth | Pour |
+|----------|--------|------|------|
+| `login`  | `^/api/login$` | `json_login` -> token JWT (Lexik) | obtention du token |
+| `api`    | `^/api` | JWT, `stateless: true` | le frontend Next.js |
+| `admin`  | reste du site | session + form login, `default_target_path` `/admin` | back-office `ROLE_ADMIN` |
+
+- `access_control` deny-by-default : publics = `^/api/login$`, `^/api/docs`, `^/login$`.
+- Anti brute-force : `login_throttling` (5 tentatives/min par IP+identifiant) sur
+  `login` et `admin`. Sur l'API, `App\Security\ApiAuthenticationFailureHandler`
+  renvoie `429` en cas de depassement, sinon delegue a Lexik (`401`).
+- Cles JWT : `backend/config/jwt/*.pem`, **non versionnees**.
+  Regenerer : `docker compose exec backend php bin/console lexik:jwt:generate-keypair`.
+  `JWT_PASSPHRASE` vient de `compose.yaml` (depuis le `.env` racine).
+- Comptes : crees par `UserFixtures`. Admin de dev = `admin@jc-reno.com` / `Password!`.
+
 ## Etat actuel
 
 ```text
-Current Phase:
-Phase 0 — Development environment (template)
+Phase courante : Phase 1 — Socle de securite (backend) — TERMINEE
 
-Status:
-Template pret a l'emploi, environnement de developpement verifie.
+Fait :
+- Docker Compose (3 services), environnement verifie
+- Auth API : entite User, POST /api/login -> JWT, firewall /api stateless
+- access_control deny-by-default
+- Firewall /admin (form login sur /login, ROLE_ADMIN) + page placeholder
+- CORS restreint au frontend local sur ^/api
+- Anti brute-force (login_throttling, 429)
+- Swagger UI / ReDoc actives
+- Fixtures de dev (compte admin)
 
-Implemented:
-- Docker Compose (3 services)
-- Symfony + API Platform (vierge)
-- FrankenPHP
-- Next.js + TypeScript (vierge)
-- PostgreSQL
-
-Not implemented (a faire dans chaque projet):
-- Authentication
-- Domain / entites
-- Business features
-- Tests
+A faire (phases suivantes) :
+- Phase 2 : entites de reference (Entreprise, TVA, Unite) + fixtures
+- Phase 3 : module d'administration (EasyAdmin)
+- Phase 4 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
+- Phase 5 : operations devis (statuts, duplication, verrou)
+- Phase 6 : CMS leger
+- Phase 7 : tests
+- Hors perimetre backend initial : generation PDF, envoi au client
 ```
 
-## Demarrer un projet depuis ce template
+## Installation
 
-Voir la section 1 du `README.md`. En resume : copier le dossier, `rm -rf .git`,
-`git init`, `cp .env.example .env`, `docker compose build`, installer les deps,
-`docker compose up -d`. Ne pas commencer le code metier avant que
+Voir la section 1 du `README.md` (procedure complete : `.env`, build, deps,
+cles JWT, migrations, fixtures). Ne pas commencer le travail metier avant que
 `docker compose ps` montre les 3 services up et que les verifications ci-dessus
 repondent.
