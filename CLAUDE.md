@@ -2,6 +2,37 @@
 
 Guide de travail pour Claude Code sur les projets bases sur ce template.
 
+## Regles imperatives du projet
+
+Ces regles priment sur tout comportement par defaut.
+
+### Securite = priorite
+
+- Deny-by-default : un endpoint est protege sauf raison explicite de l'ouvrir.
+- Deux firewalls distincts : `/api` (JWT, stateless) pour le front ; `/admin`
+  (session, form login, `ROLE_ADMIN`) pour le module d'administration.
+- Aucun secret dans un fichier versionne (cles JWT, passphrases, mots de passe).
+  Les valeurs reelles passent par `compose.yaml` depuis le `.env` racine
+  (non versionne), sur le modele de `APP_SECRET`.
+- Ne jamais faire confiance aux montants envoyes par le client : prix, quantites
+  et totaux sont recalcules et imposes cote serveur.
+- Validation stricte des entrees. Hash de mot de passe natif Symfony.
+
+### Git
+
+- Branches : `develop` (integration), puis `feature/back/<n>-<sujet>` ou
+  `feature/front/<n>-<sujet>`. Merge en `--no-ff` (pas de squash).
+- Commits petits, chacun comprehensible seul, chacun laisse l'app demarrable.
+- Jamais de backend et de frontend dans le meme commit.
+- Messages en Conventional Commits : `feat(backend):`, `chore(frontend):`, `docs:`...
+
+### Documentation a jour
+
+- Tout changement structurant (nouvelle dependance, nouvelle entite, nouvel
+  endpoint, modif de config securite, nouveau service Docker) est accompagne,
+  **dans le meme commit**, d'une mise a jour de `README.md` et de la section
+  « Etat actuel » ci-dessous.
+
 ## Vue d'ensemble
 
 Base de depart pour une application web : frontend Next.js, backend Symfony +

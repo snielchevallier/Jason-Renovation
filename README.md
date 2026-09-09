@@ -1,54 +1,57 @@
-# Template Next.js + Symfony + Docker
+# Jason Renovation — Application de creation de devis
 
-Base de depart pour demarrer une application web avec :
+Application web pour rediger, suivre et editer les devis d'une entreprise de
+renovation.
 
 - **Frontend** : Next.js 16 + TypeScript (Node.js 22, pnpm)
 - **Backend** : Symfony 7.4 LTS + API Platform, servi par FrankenPHP (PHP 8.4)
 - **Base de donnees** : PostgreSQL 16
 - **Orchestration** : un seul `compose.yaml` (3 conteneurs)
 
-Le template ne contient **aucune fonctionnalite metier** : ni entite, ni
-authentification, ni page applicative. Juste l'infrastructure de developpement,
-prete a l'emploi et deja verifiee.
+Perimetre fonctionnel cible : gestion des clients et de leurs chantiers,
+catalogue de prestations reutilisables, redaction de devis (lignes, TVA
+multi-taux, totaux), cycle de vie du devis (brouillon -> envoye -> accepte /
+refuse), parametres de l'entreprise, et un module d'administration back-office.
+La generation PDF et l'envoi au client viendront dans un second temps.
+
+Le detail des choix et de l'avancement est dans [`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
-## 1. Demarrer un nouveau projet a partir de ce template
+## 1. Installation
+
+Prerequis : [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+installe et demarre. Rien d'autre (ni PHP, ni Node, ni PostgreSQL sur la machine).
 
 ```bash
-# 1. Copier le dossier du template sous un nouveau nom
-cp -r APPLITEMPLATE mon-projet
-cd mon-projet
-
-# 2. Repartir d'un historique Git vierge
-rm -rf .git
-git init -b main
-
-# 3. Creer le fichier d'environnement local
+# 1. Fichier d'environnement local
 copy .env.example .env        # PowerShell / CMD
 # ou :  cp .env.example .env   # Git Bash
 
-# 4. (optionnel) Personnaliser
-#    - .env               : POSTGRES_DB, et les ports si besoin
-#    - frontend/package.json  -> champ "name"
-#    - backend/config/packages/api_platform.yaml -> "title"
-
-# 5. Construire les images (1re fois, puis seulement si un Dockerfile change)
+# 2. Construire les images (1re fois, puis seulement si un Dockerfile change)
 docker compose build
 
-# 6. Installer les dependances (1re fois)
+# 3. Installer les dependances (1re fois)
 docker compose run --rm --no-deps backend composer install
 docker compose run --rm --no-deps frontend pnpm install
 
-# 7. Demarrer
+# 4. Generer les cles JWT (1re fois — elles ne sont pas versionnees)
+docker compose run --rm --no-deps backend php bin/console lexik:jwt:generate-keypair
+
+# 5. Demarrer
 docker compose up -d
+
+# 6. Creer le schema de base de donnees
+docker compose exec backend php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
-Le nom de projet Docker (prefixe des conteneurs et volumes) est
-automatiquement celui du dossier. Deux projets issus du template sont donc
-isoles l'un de l'autre, a condition de leur donner des **ports differents**
-dans `.env` (`FRONTEND_PORT`, `BACKEND_PORT`, `POSTGRES_PORT`) s'ils doivent
-tourner en meme temps.
+Verifications rapides :
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/api/docs.jsonld  # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000                   # 200
+docker compose exec -T backend php bin/console dbal:run-sql "SELECT 1"           # connexion DB
+```
 
 ## 2. Les trois conteneurs
 
@@ -60,115 +63,120 @@ tourner en meme temps.
 
 Le `frontend` parle au `backend` par HTTP. Le `backend` parle a `database` par
 le reseau interne de Docker. Tout est decrit dans [`compose.yaml`](./compose.yaml),
-qui est commente : c'est le point de depart pour comprendre le projet.
+qui est commente.
 
-## 3. A quoi sert Docker ici
+Modifier le code dans `backend/` ou `frontend/` est pris en compte
+**immediatement**, sans reconstruire les images. Un `docker compose build` n'est
+necessaire que si un `Dockerfile` change ; un `composer install` / `pnpm install`
+que si on ajoute une dependance.
 
-Docker installe et fait tourner PHP, Symfony, FrankenPHP, Node.js, Next.js et
-PostgreSQL **dans des conteneurs**, sans rien installer directement sur la
-machine (a part Docker). Le meme environnement pourra plus tard etre deploye
-tel quel sur un serveur (VPS avec Docker).
-
-## 4. Prerequis
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installe et demarre.
-- Rien d'autre (pas besoin de PHP, Node ou PostgreSQL sur la machine).
-
-## 5. Commandes du quotidien
+## 3. Commandes du quotidien
 
 | Action                                 | Commande                                    |
 |----------------------------------------|---------------------------------------------|
 | Demarrer                               | `docker compose up -d`                       |
 | Arreter (les donnees sont conservees)  | `docker compose down`                        |
-| Voir les logs des 3 services (live)    | `docker compose logs -f`                     |
-| Voir les logs d'un seul service        | `docker compose logs -f backend`             |
+| Voir les logs (live)                   | `docker compose logs -f [service]`           |
 | Etat des conteneurs                    | `docker compose ps`                          |
-| Reconstruire les images                | `docker compose build` puis `docker compose up -d` |
 | Reconstruire + demarrer                | `docker compose up -d --build`               |
 | Terminal dans le backend               | `docker compose exec backend sh`             |
-| Terminal dans le frontend              | `docker compose exec frontend sh`            |
 | Commande Symfony                       | `docker compose exec backend php bin/console <cmd>` |
+| Creer / jouer une migration            | `docker compose exec backend php bin/console make:migration` puis `doctrine:migrations:migrate` |
 | Ajouter une dependance PHP             | `docker compose exec backend composer require <paquet>` |
 | Ajouter une dependance JS              | `docker compose exec frontend pnpm add <paquet>` |
 | Tout supprimer, Y COMPRIS la base      | `docker compose down -v`  *(efface les donnees)* |
 
-Modifier le code dans `backend/` ou `frontend/` est pris en compte
-**immediatement**, sans reconstruire les images :
-- Next.js recompile la page automatiquement (hot reload, via webpack + polling) ;
-- Symfony relit les fichiers a chaque requete.
-
-Un `docker compose build` n'est necessaire que si un `Dockerfile` change.
-Un `composer install` / `pnpm install` n'est necessaire que si on ajoute une
-dependance.
-
-## 6. Adresses (valeurs par defaut)
+## 4. Adresses (valeurs par defaut)
 
 | Service            | URL                                          |
 |--------------------|----------------------------------------------|
 | Frontend (Next.js) | http://localhost:3000                         |
-| API (Symfony)      | http://localhost:8000                         |
-| Documentation API  | http://localhost:8000/api                     |
+| API (Symfony)      | http://localhost:8000/api                     |
+| Documentation API  | http://localhost:8000/api/docs (Swagger UI)   |
 | PostgreSQL         | `127.0.0.1:5432` (acces local optionnel)      |
 
-`http://localhost:8000/` renvoie une erreur 404 : c'est normal, aucune page
-d'accueil n'est definie. Le point d'entree de l'API est `/api`.
+`http://localhost:8000/` renvoie une 404 (pas de page d'accueil). Le point
+d'entree de l'API est `/api`. Ces ports sont configurables dans `.env`.
 
-Ces ports sont configurables dans `.env` (`FRONTEND_PORT`, `BACKEND_PORT`,
-`POSTGRES_PORT`).
+## 5. Authentification de l'API
 
-## 7. Ou est le code
+L'API est protegee par jeton JWT (deny-by-default). Seuls `/api/login` et
+`/api/docs` sont publics.
+
+```bash
+# 1. Obtenir un token
+curl -X POST http://localhost:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"<email>","password":"<mot de passe>"}'
+# -> {"token":"eyJ..."}
+
+# 2. Appeler un endpoint protege
+curl http://localhost:8000/api/... -H "Authorization: Bearer eyJ..."
+```
+
+Un module d'administration back-office (`/admin`, session + `ROLE_ADMIN`) est
+prevu, distinct du firewall API.
+
+## 6. Ou est le code
 
 ```text
 .
-├── compose.yaml          <-- description des 3 conteneurs (commente)
-├── .env.example          <-- modele de variables d'environnement
+├── compose.yaml              <-- description des 3 conteneurs (commente)
+├── .env.example              <-- modele de variables d'environnement
+├── CLAUDE.md                 <-- regles projet + etat d'avancement
 ├── docker/
-│   ├── backend/Dockerfile    <-- image PHP / FrankenPHP
-│   └── frontend/Dockerfile   <-- image Node.js
-├── backend/              <-- application Symfony + API Platform (vierge)
-│   ├── src/                  code PHP
-│   ├── config/              configuration Symfony
-│   └── composer.json
-└── frontend/             <-- application Next.js (vierge)
-    ├── app/                 pages et composants React
-    ├── package.json
+│   ├── backend/Dockerfile        <-- image PHP / FrankenPHP
+│   └── frontend/Dockerfile       <-- image Node.js
+├── backend/                  <-- application Symfony + API Platform
+│   ├── CLAUDE.md                 conventions backend
+│   ├── src/Entity/              entites Doctrine
+│   ├── config/packages/         configuration (security.yaml, api_platform.yaml...)
+│   ├── config/jwt/              cles JWT (non versionnees)
+│   └── migrations/             migrations de schema
+└── frontend/                 <-- application Next.js
+    ├── app/                    pages et composants React
     └── next.config.ts
 ```
 
-## 8. Variables d'environnement
+## 7. Variables d'environnement
 
 Regroupees dans `.env` a la racine (copie de `.env.example`), lu automatiquement
-par Docker Compose.
+par Docker Compose. `.env` n'est **pas** versionne.
 
-| Variable              | Role                                             | Defaut |
-|-----------------------|-------------------------------------------------|--------|
+| Variable              | Role                                             | Defaut (`.env.example`) |
+|-----------------------|-------------------------------------------------|-------------------------|
 | `POSTGRES_DB`         | nom de la base                                   | `app`  |
 | `POSTGRES_USER`       | utilisateur PostgreSQL                           | `app`  |
 | `POSTGRES_PASSWORD`   | mot de passe PostgreSQL                          | `app`  |
 | `APP_SECRET`          | cle interne Symfony (non sensible en dev)        | `dev_...` |
+| `JWT_PASSPHRASE`      | passphrase de la cle privee JWT (Lexik)          | `dev_...` |
 | `FRONTEND_PORT`       | port du frontend sur l'hote                      | `3000` |
 | `BACKEND_PORT`        | port de l'API sur l'hote                         | `8000` |
 | `POSTGRES_PORT`       | port PostgreSQL sur l'hote                       | `5432` |
 
-`.env` n'est **pas** versionne. En production, ces variables sont fournies par
-le serveur. Deux valeurs sont construites automatiquement dans `compose.yaml`
-a partir des precedentes : `DATABASE_URL` (connexion a la base) et
-`NEXT_PUBLIC_API_URL` (`http://localhost:<BACKEND_PORT>`, URL de l'API vue
-depuis le navigateur).
+`DATABASE_URL` et `NEXT_PUBLIC_API_URL` sont construites automatiquement dans
+`compose.yaml` a partir des variables ci-dessus. En production, ces valeurs sont
+fournies par le serveur, jamais par Git.
 
-## 9. Mettre le template a jour
+## 8. Versions
 
-Les versions sont epinglees (Symfony 7.4 LTS, PostgreSQL 16, Node 22 LTS,
-FrankenPHP 1.12, Next 16) et figees par les lockfiles
-(`backend/composer.lock`, `frontend/pnpm-lock.yaml`). Pour rafraichir :
+Epinglees (Symfony 7.4 LTS, API Platform 4.x, PostgreSQL 16, Node 22 LTS,
+FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
+`frontend/pnpm-lock.yaml`.
 
-```bash
-docker compose exec backend composer update
-docker compose exec frontend pnpm update
-```
+## 9. Etat d'avancement
 
-et, si besoin, ajuster les tags d'images dans `docker/*/Dockerfile`.
+| Domaine | Etat |
+|---------|------|
+| Environnement Docker (3 services)         | ✅ operationnel |
+| Auth API : entite User, login JWT, firewall `/api` stateless, deny-by-default | 🚧 en cours (Phase 1) |
+| Firewall `/admin` (form login, `ROLE_ADMIN`) | ⬜ a faire |
+| Entites de reference (Entreprise, TVA, Unite) | ⬜ a faire |
+| Module d'administration (EasyAdmin)       | ⬜ a faire |
+| Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
+| Operations devis (statuts, duplication, verrou) | ⬜ a faire |
+| CMS leger                                 | ⬜ a faire |
+| Tests                                     | ⬜ a faire |
+| Generation PDF / envoi au client          | ⬜ hors perimetre backend initial |
 
-## 10. Etat du template
-
-Voir [`CLAUDE.md`](./CLAUDE.md).
+Detail des phases et des decisions : [`CLAUDE.md`](./CLAUDE.md).
