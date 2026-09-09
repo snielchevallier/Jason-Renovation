@@ -36,16 +36,25 @@ security:
             provider: app_user_provider
             jwt: ~
 
-        # Reste de l'application (le firewall /admin form-login arrive au commit 5).
-        main:
+        # Back-office /admin et pages web : session + formulaire de connexion.
+        admin:
             lazy: true
             provider: app_user_provider
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+                default_target_path: admin_home
+            logout:
+                path: app_logout
 
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/api/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
 
 when@test:
     security:

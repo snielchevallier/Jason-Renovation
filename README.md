@@ -98,10 +98,12 @@ que si on ajoute une dependance.
 `http://localhost:8000/` renvoie une 404 (pas de page d'accueil). Le point
 d'entree de l'API est `/api`. Ces ports sont configurables dans `.env`.
 
-## 5. Authentification de l'API
+## 5. Authentification
 
-L'API est protegee par jeton JWT (deny-by-default). Seuls `/api/login` et
-`/api/docs` sont publics.
+Deux firewalls distincts, un par usage.
+
+**API (`/api/*`)** — jeton JWT, sans session, deny-by-default. Seuls `/api/login`
+et `/api/docs` sont publics.
 
 ```bash
 # 1. Obtenir un token
@@ -114,8 +116,9 @@ curl -X POST http://localhost:8000/api/login \
 curl http://localhost:8000/api/... -H "Authorization: Bearer eyJ..."
 ```
 
-Un module d'administration back-office (`/admin`, session + `ROLE_ADMIN`) est
-prevu, distinct du firewall API.
+**Back-office (`/admin`)** — session + formulaire de connexion sur
+`http://localhost:8000/login`, reserve a `ROLE_ADMIN`. La page `/admin` est pour
+l'instant un placeholder ; EasyAdmin y sera monte en Phase 3.
 
 ## 6. Ou est le code
 
@@ -170,7 +173,7 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 |---------|------|
 | Environnement Docker (3 services)         | ✅ operationnel |
 | Auth API : entite User, login JWT, firewall `/api` stateless, deny-by-default | 🚧 en cours (Phase 1) |
-| Firewall `/admin` (form login, `ROLE_ADMIN`) | ⬜ a faire |
+| Firewall `/admin` (form login sur `/login`, `ROLE_ADMIN`, page placeholder) | ✅ fait |
 | Entites de reference (Entreprise, TVA, Unite) | ⬜ a faire |
 | Module d'administration (EasyAdmin)       | ⬜ a faire |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
