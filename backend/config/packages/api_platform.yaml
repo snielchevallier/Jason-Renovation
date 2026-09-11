@@ -1,6 +1,11 @@
 api_platform:
     title: Jason Renovation API
     version: 1.0.0
+    # Formats servis par l'API. JSON-LD / Hydra par defaut (hypermedia, docs) ;
+    # le frontend Next.js demande application/json via l'en-tete Accept.
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
     defaults:
         stateless: true
         cache_headers:

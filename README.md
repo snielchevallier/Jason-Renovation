@@ -128,7 +128,26 @@ curl http://localhost:8000/api/... -H "Authorization: Bearer eyJ..."
 `http://localhost:8000/login`, reserve a `ROLE_ADMIN`. La page `/admin` est pour
 l'instant un placeholder ; EasyAdmin y sera monte en Phase 3.
 
-## 6. Ou est le code
+## 6. Donnees de reference
+
+Trois ressources en lecture seule (authentification requise, ecriture reservee
+au back-office) :
+
+| Ressource | Contenu |
+|-----------|---------|
+| `GET /api/tvas` | taux de TVA (20 / 10 / 5,5 / 0 %) |
+| `GET /api/unites` | unites de mesure (u, forfait, ens, m2, ml, m3, kg, t, h, j, L) |
+| `GET /api/entreprises` | fiche entreprise (singleton, entete des devis) |
+
+Format par defaut : `application/ld+json` (Hydra). Le frontend peut demander
+`application/json` via l'en-tete `Accept` pour une reponse simple, sans
+enveloppe. Les champs `null` sont omis de la reponse.
+
+```bash
+curl http://localhost:8000/api/tvas -H "Authorization: Bearer <token>" -H "Accept: application/json"
+```
+
+## 7. Ou est le code
 
 ```text
 .
@@ -149,7 +168,7 @@ l'instant un placeholder ; EasyAdmin y sera monte en Phase 3.
     └── next.config.ts
 ```
 
-## 7. Variables d'environnement
+## 8. Variables d'environnement
 
 Regroupees dans `.env` a la racine (copie de `.env.example`), lu automatiquement
 par Docker Compose. `.env` n'est **pas** versionne.
@@ -171,13 +190,13 @@ automatiquement dans `compose.yaml` a partir des variables ci-dessus
 par l'API en CORS). En production, ces valeurs sont fournies par le serveur,
 jamais par Git.
 
-## 8. Versions
+## 9. Versions
 
 Epinglees (Symfony 7.4 LTS, API Platform 4.x, PostgreSQL 16, Node 22 LTS,
 FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 `frontend/pnpm-lock.yaml`.
 
-## 9. Etat d'avancement
+## 10. Etat d'avancement
 
 | Domaine | Etat |
 |---------|------|
@@ -186,7 +205,7 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Firewall `/admin` (form login sur `/login`, `ROLE_ADMIN`, page placeholder) | ✅ fait |
 | Anti brute-force (login throttling, 429) | ✅ fait |
 | Fixtures de developpement (compte admin) | ✅ fait |
-| Entites de reference (Entreprise, TVA, Unite) | ⬜ a faire |
+| Entites de reference (Entreprise, TVA, Unite) + embeddable Adresse | ✅ fait |
 | Module d'administration (EasyAdmin)       | ⬜ a faire |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
