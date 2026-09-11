@@ -156,7 +156,7 @@ Deux firewalls (`backend/config/packages/security.yaml`) :
 |----------|--------|------|------|
 | `login`  | `^/api/login$` | `json_login` -> token JWT (Lexik) | obtention du token |
 | `api`    | `^/api` | JWT, `stateless: true` | le frontend Next.js |
-| `admin`  | reste du site | session + form login, `default_target_path` `/admin` | back-office `ROLE_ADMIN` |
+| `admin`  | reste du site (dont `/admin`) | session + form login, `default_target_path` `admin` | back-office `ROLE_ADMIN` |
 
 - `access_control` deny-by-default : publics = `^/api/login$`, `^/api/docs`, `^/login$`.
 - Anti brute-force : `login_throttling` (5 tentatives/min par IP+identifiant) sur
@@ -165,7 +165,12 @@ Deux firewalls (`backend/config/packages/security.yaml`) :
 - Cles JWT : `backend/config/jwt/*.pem`, **non versionnees**.
   Regenerer : `docker compose exec backend php bin/console lexik:jwt:generate-keypair`.
   `JWT_PASSPHRASE` vient de `compose.yaml` (depuis le `.env` racine).
-- Comptes : crees par `UserFixtures`. Admin de dev = `admin@jc-reno.com` / `Password!`.
+- Comptes : crees/geres via le back-office (`/admin/user`, Phase 3) ou
+  `UserFixtures`. Admin de dev = `admin@jc-reno.com` / `Password!`.
+- **CSRF : toujours en session** (`config/packages/csrf.yaml`), y compris pour
+  EasyAdmin. La recipe `symfony/form` active par defaut un CSRF "stateless"
+  qui exige un controleur JS absent de nos pages ; desactive volontairement
+  (voir Phase 3 ci-dessous). Ne pas le reactiver sans ajouter le JS necessaire.
 
 ## Entites de reference (Phase 2)
 
@@ -180,10 +185,36 @@ Deux firewalls (`backend/config/packages/security.yaml`) :
 - Format API par defaut = `application/ld+json` (Hydra) ; `application/json` disponible via l'en-tete `Accept` pour le frontend. Les champs `null` sont omis de la sortie.
 - Ecriture de ces 3 entites : reservee au back-office (EasyAdmin, Phase 3), pas d'endpoint `/api` en ecriture.
 
+## Module d'administration (Phase 3)
+
+Back-office EasyAdmin (`easycorp/easyadmin-bundle`) sur `/admin`, firewall
+`admin` (session, `ROLE_ADMIN`). Remplace le placeholder de la Phase 1.
+
+- `src/Controller/Admin/DashboardController.php` : `#[AdminDashboard(routePath: '/admin', routeName: 'admin')]`.
+  Le menu « Entreprise » pointe directement sur l'edition de l'unique ligne
+  (`AdminUrlGenerator`), jamais sur une liste.
+- CRUD : `TvaCrudController`, `UniteCrudController`, `EntrepriseCrudController`
+  (NEW/DELETE/INDEX desactives — singleton), `UserCrudController`.
+- `UserCrudController` : `plainPassword` (propriete transitoire non persistee,
+  pas de colonne Doctrine) hashee dans `password` via
+  `UserPasswordHasherInterface`, dans `persistEntity()`/`updateEntity()`.
+  Confirmation du mot de passe (`RepeatedType`), longueur minimale 12
+  caracteres (NIST 800-63B : longueur > complexite, pas de rotation forcee).
+  Validation `UniqueEntity`/`Assert\Email`/`Assert\NotBlank` sur `User`.
+  **Garde-fou anti-lockout** : impossible de se retirer soi-meme
+  `ROLE_ADMIN`, de se supprimer soi-meme, ou de retirer le role au dernier
+  administrateur (`UserRepository::countUsersWithRole()`).
+- `lastLoginAt` : horodate uniquement les connexions au firewall `admin`
+  (`EventListener/LastLoginListener.php`, filtre sur `getFirewallName()`) —
+  pas les appels API JWT, qui re-authentifient a chaque requete.
+- Ecarts EasyAdmin 5.x a connaitre si on reecrit du code sur ce modele :
+  `MenuItem::linkTo(CrudControllerFqcn, ...)` (pas `linkToCrud`) ;
+  `FormField::addFieldset()` (pas `addPanel`) ; `setHelp()` n'accepte pas `null`.
+
 ## Etat actuel
 
 ```text
-Phase courante : Phase 2 — Entites de reference (backend) — TERMINEE
+Phase courante : Phase 3 — Module d'administration (backend) — TERMINEE
 
 Fait (Phase 1) :
 - Docker Compose (3 services), environnement verifie
@@ -201,8 +232,13 @@ Fait (Phase 2) :
 - symfony/expression-language (securite par operation API Platform)
 - Format JSON disponible a cote de JSON-LD
 
+Fait (Phase 3) :
+- Back-office EasyAdmin sur /admin (voir section ci-dessus)
+- CRUD Tva, Unite, Entreprise (singleton), User
+- Garde-fou anti-lockout, validation propre, lastLoginAt
+- CSRF de session partout (stateless desactive)
+
 A faire (phases suivantes) :
-- Phase 3 : module d'administration (EasyAdmin)
 - Phase 4 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
 - Phase 5 : operations devis (statuts, duplication, verrou)
 - Phase 6 : CMS leger
