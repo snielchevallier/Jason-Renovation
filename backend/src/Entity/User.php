@@ -35,6 +35,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255)]
     private ?string $nom = null;
 
+    /**
+     * Mot de passe en clair saisi via le back-office. Non persiste (pas de
+     * colonne Doctrine) : le controleur EasyAdmin le hashe dans "password"
+     * puis le vide immediatement apres.
+     */
+    private ?string $plainPassword = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -107,6 +114,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setNom(string $nom): static
     {
         $this->nom = $nom;
+
+        return $this;
+    }
+
+    public function getPlainPassword(): ?string
+    {
+        return $this->plainPassword;
+    }
+
+    public function setPlainPassword(?string $plainPassword): static
+    {
+        $this->plainPassword = $plainPassword;
 
         return $this;
     }

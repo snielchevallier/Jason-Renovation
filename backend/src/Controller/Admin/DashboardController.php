@@ -55,6 +55,6 @@ class DashboardController extends AbstractDashboardController
 
         yield MenuItem::linkTo(TvaCrudController::class, 'Taux de TVA', 'fa fa-percent');
         yield MenuItem::linkTo(UniteCrudController::class, 'Unites', 'fa fa-ruler');
-        // Utilisateurs arrive au commit suivant.
+        yield MenuItem::linkTo(UserCrudController::class, 'Utilisateurs', 'fa fa-user');
     }
 }
