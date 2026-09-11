@@ -125,8 +125,7 @@ curl http://localhost:8000/api/... -H "Authorization: Bearer eyJ..."
 ```
 
 **Back-office (`/admin`)** — session + formulaire de connexion sur
-`http://localhost:8000/login`, reserve a `ROLE_ADMIN`. La page `/admin` est pour
-l'instant un placeholder ; EasyAdmin y sera monte en Phase 3.
+`http://localhost:8000/login`, reserve a `ROLE_ADMIN`. Detail en §7.
 
 ## 6. Donnees de reference
 
@@ -147,7 +146,24 @@ enveloppe. Les champs `null` sont omis de la reponse.
 curl http://localhost:8000/api/tvas -H "Authorization: Bearer <token>" -H "Accept: application/json"
 ```
 
-## 7. Ou est le code
+## 7. Back-office
+
+`http://localhost:8000/admin` (EasyAdmin), formulaire de connexion sur `/login`,
+reserve a `ROLE_ADMIN`. Identifiants de dev : `admin@jc-reno.com` / `Password!`.
+
+| Section | Pour |
+|---------|------|
+| Entreprise | edition de la fiche entreprise (singleton, pas de creation/suppression) |
+| Taux de TVA | gestion des taux (`actif`/`position`) |
+| Unites | gestion des unites de mesure (`actif`/`position`) |
+| Utilisateurs | comptes du back-office (email, nom, roles, mot de passe) |
+
+Gestion des utilisateurs : mot de passe avec confirmation (12 caracteres
+minimum), impossible de se retirer soi-meme le role administrateur, de se
+supprimer soi-meme, ou de retirer le role au dernier administrateur restant.
+La derniere connexion au back-office est affichee dans la liste.
+
+## 8. Ou est le code
 
 ```text
 .
@@ -160,6 +176,7 @@ curl http://localhost:8000/api/tvas -H "Authorization: Bearer <token>" -H "Accep
 ├── backend/                  <-- application Symfony + API Platform
 │   ├── CLAUDE.md                 conventions backend
 │   ├── src/Entity/              entites Doctrine
+│   ├── src/Controller/Admin/    back-office EasyAdmin (dashboard + CRUD)
 │   ├── config/packages/         configuration (security.yaml, api_platform.yaml...)
 │   ├── config/jwt/              cles JWT (non versionnees)
 │   └── migrations/             migrations de schema
@@ -168,7 +185,7 @@ curl http://localhost:8000/api/tvas -H "Authorization: Bearer <token>" -H "Accep
     └── next.config.ts
 ```
 
-## 8. Variables d'environnement
+## 9. Variables d'environnement
 
 Regroupees dans `.env` a la racine (copie de `.env.example`), lu automatiquement
 par Docker Compose. `.env` n'est **pas** versionne.
@@ -190,23 +207,23 @@ automatiquement dans `compose.yaml` a partir des variables ci-dessus
 par l'API en CORS). En production, ces valeurs sont fournies par le serveur,
 jamais par Git.
 
-## 9. Versions
+## 10. Versions
 
 Epinglees (Symfony 7.4 LTS, API Platform 4.x, PostgreSQL 16, Node 22 LTS,
 FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 `frontend/pnpm-lock.yaml`.
 
-## 10. Etat d'avancement
+## 11. Etat d'avancement
 
 | Domaine | Etat |
 |---------|------|
 | Environnement Docker (3 services)         | ✅ operationnel |
 | Auth API : entite User, login JWT, firewall `/api` stateless, deny-by-default | ✅ fait |
-| Firewall `/admin` (form login sur `/login`, `ROLE_ADMIN`, page placeholder) | ✅ fait |
+| Firewall `/admin` (form login sur `/login`, `ROLE_ADMIN`) | ✅ fait |
 | Anti brute-force (login throttling, 429) | ✅ fait |
 | Fixtures de developpement (compte admin) | ✅ fait |
 | Entites de reference (Entreprise, TVA, Unite) + embeddable Adresse | ✅ fait |
-| Module d'administration (EasyAdmin)       | ⬜ a faire |
+| Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |
