@@ -253,23 +253,43 @@ Inseree avant le coeur metier : on ne veut pas empiler la logique la plus
 critique (calculs de devis) sur un backend sans filet, et le module d'admin
 laisse deja passer des erreurs brutes (500) qu'il faut rendre propres.
 
-**A. Socle de tests**
-- `symfony/test-pack` (PHPUnit + browser-kit + css-selector)
-- `dama/doctrine-test-bundle` (chaque test dans une transaction annulee : base
-  propre entre tests, rapide)
-- `ApiTestCase`/`Client` d'API Platform (deja fournis par `api-platform/core`,
-  rien a ajouter)
-- `.env.test`, `phpunit.xml.dist`
+**A. Socle de tests** — FAIT
+- `symfony/test-pack` (PHPUnit 13 + browser-kit + css-selector), `symfony/http-client`
+  (requis par le client de test API Platform)
+- `dama/doctrine-test-bundle` (recipe en `recipes-contrib`, ignoree par notre
+  `allow-contrib: false` : bundle enregistre a la main dans `bundles.php`,
+  `test` uniquement, + `<extensions><bootstrap class="DAMA\...\PHPUnitExtension"/>`
+  dans `phpunit.dist.xml`). Chaque test tourne dans une transaction annulee.
+- `ApiTestCase`/`Client` d'API Platform (deja fournis par `api-platform/core`).
+  Notre `App\Tests\Support\ApiTestCase` fixe `$alwaysBootKernel = true`
+  (evite un avertissement de depreciation qui fait echouer la suite avec
+  `failOnDeprecation="true"`).
+- **Piege a connaitre** : `docker compose exec backend php bin/phpunit` tourne
+  en `APP_ENV=dev`, pas `test` — `KernelTestCase::createKernel()` lit
+  `$_ENV['APP_ENV']` avant `$_SERVER['APP_ENV']`, et le `force="true"` de
+  `phpunit.dist.xml` ne pose que `$_SERVER`. La vraie variable d'env du
+  conteneur (`dev`, via `compose.yaml`) gagne. Toujours lancer
+  `docker compose exec backend composer test` (script `composer.json` qui
+  fixe `APP_ENV=test` correctement), jamais `bin/phpunit` nu.
+- Base de test : `doctrine:database:create --env=test` puis
+  `doctrine:migrations:migrate --env=test` (a faire une fois).
 
-**B. Tests de regression (Phases 1-3)**
-- Flux de connexion : `/api/login` (succes, echec, throttle -> 429),
-  `/login` (idem)
-- `access_control` deny-by-default sur `/api` et `/admin`
-- CORS : origine autorisee vs refusee
-- Garde-fous `UserCrudController` : anti-lockout (auto-retrait role admin,
-  auto-suppression, dernier admin) — notamment le cas **DELETE**, jamais
-  verifie manuellement (bloque par le CSRF gere en JS d'EasyAdmin, que
-  `curl` ne peut pas simuler ; le client de test Symfony n'a pas ce probleme)
+**B. Tests de regression (Phases 1-3)** — FAIT
+- `tests/Functional/AuthenticationTest.php` : `/api/login` (succes, echec,
+  throttle -> 429), deny-by-default sur `/api`, `/api/docs` public
+- `tests/Functional/AdminAccessTest.php` : deny-by-default sur `/admin`,
+  formulaire `/login`, acces admin vs 403 non-admin
+- `tests/Functional/UserCrudGuardTest.php` : garde-fous anti-lockout —
+  **y compris le DELETE**, jamais verifiable manuellement (le bouton
+  d'EasyAdmin recupere son jeton CSRF en JS, que `curl` ne simule pas). Le
+  client de test genere le jeton via le service du conteneur en repoussant
+  temporairement la requete courante sur le `request_stack` (le
+  `CsrfTokenManager` a besoin d'une requete "active" pour trouver la session).
+- `tests/Support/CreatesUsers.php` : trait partage pour creer des users de
+  test directement en base (sans passer par le back-office).
+- Piege identite-map : apres une requete qui echoue (garde-fou), l'entite en
+  memoire reste mutee bien que rien n'ait ete flushe. Toujours
+  `$entityManager->clear()` avant de relire l'etat reel pour une assertion.
 
 **C. Gestion des erreurs dans le back-office**
 - Aujourd'hui, les garde-fous (`UserCrudController::guardAgainstLockout()`,
@@ -282,6 +302,10 @@ laisse deja passer des erreurs brutes (500) qu'il faut rendre propres.
   page precedente, au lieu de crasher.
 - S'applique a tous les garde-fous deja en place et aux futurs (ex. Phase 6 :
   empecher de desactiver un `Tva`/`Unite` reference par un devis existant).
+- **A faire en meme temps** : `UserCrudGuardTest` attend aujourd'hui un `500`
+  (comportement reel actuel) sur les cas bloques — mettre a jour ces
+  assertions vers le comportement propre (redirection + flash) une fois C
+  implementee.
 
 **D. Ensuite, a partir de la Phase 5**
 - Tests ecrits **en meme temps** que le code, pas apres :

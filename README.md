@@ -163,7 +163,31 @@ minimum), impossible de se retirer soi-meme le role administrateur, de se
 supprimer soi-meme, ou de retirer le role au dernier administrateur restant.
 La derniere connexion au back-office est affichee dans la liste.
 
-## 8. Ou est le code
+## 8. Tests
+
+```bash
+docker compose exec backend composer test
+```
+
+Lance PHPUnit sur une base de donnees dediee (`<POSTGRES_DB>_test`), creee et
+migree une fois a l'installation :
+
+```bash
+docker compose exec backend php bin/console doctrine:database:create --env=test
+docker compose exec backend php bin/console doctrine:migrations:migrate --env=test --no-interaction
+```
+
+Chaque test tourne dans une transaction annulee a la fin (`dama/doctrine-test-bundle`) :
+base propre a chaque execution, pas de nettoyage manuel.
+
+⚠️ Ne pas lancer `php bin/phpunit` directement sans `composer test` : le
+conteneur a `APP_ENV=dev` comme variable d'environnement reelle, qui **prime**
+sur le `APP_ENV=test` de `phpunit.dist.xml` (particularite de
+`KernelTestCase::createKernel()`, qui lit `$_ENV` avant `$_SERVER`). Le script
+`composer test` fixe la variable correctement ; sinon utiliser
+`docker compose exec -e APP_ENV=test backend php bin/phpunit`.
+
+## 9. Ou est le code
 
 ```text
 .
@@ -185,7 +209,7 @@ La derniere connexion au back-office est affichee dans la liste.
     └── next.config.ts
 ```
 
-## 9. Variables d'environnement
+## 10. Variables d'environnement
 
 Regroupees dans `.env` a la racine (copie de `.env.example`), lu automatiquement
 par Docker Compose. `.env` n'est **pas** versionne.
@@ -207,13 +231,13 @@ automatiquement dans `compose.yaml` a partir des variables ci-dessus
 par l'API en CORS). En production, ces valeurs sont fournies par le serveur,
 jamais par Git.
 
-## 10. Versions
+## 11. Versions
 
 Epinglees (Symfony 7.4 LTS, API Platform 4.x, PostgreSQL 16, Node 22 LTS,
 FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 `frontend/pnpm-lock.yaml`.
 
-## 11. Etat d'avancement
+## 12. Etat d'avancement
 
 | Domaine | Etat |
 |---------|------|
@@ -224,7 +248,8 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Fixtures de developpement (compte admin) | ✅ fait |
 | Entites de reference (Entreprise, TVA, Unite) + embeddable Adresse | ✅ fait |
 | Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
-| Tests (socle PHPUnit, regression Phases 1-3) + gestion des erreurs `/admin` | ⬜ a faire (prochaine phase) |
+| Socle de tests (PHPUnit, DAMA, regression Phases 1-3 : auth, /admin, garde-fous User) | ✅ fait |
+| Gestion des erreurs `/admin` (messages propres au lieu de 500) | ⬜ a faire |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |
