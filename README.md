@@ -224,10 +224,11 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Fixtures de developpement (compte admin) | ✅ fait |
 | Entites de reference (Entreprise, TVA, Unite) + embeddable Adresse | ✅ fait |
 | Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
+| Tests (socle PHPUnit, regression Phases 1-3) + gestion des erreurs `/admin` | ⬜ a faire (prochaine phase) |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |
-| Tests                                     | ⬜ a faire |
+| Qualite finale (couverture de tests, fixtures realistes) | ⬜ a faire |
 | Generation PDF / envoi au client          | ⬜ hors perimetre backend initial |
 
 Detail des phases et des decisions : [`CLAUDE.md`](./CLAUDE.md).

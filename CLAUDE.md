@@ -239,12 +239,55 @@ Fait (Phase 3) :
 - CSRF de session partout (stateless desactive)
 
 A faire (phases suivantes) :
-- Phase 4 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
-- Phase 5 : operations devis (statuts, duplication, verrou)
-- Phase 6 : CMS leger
-- Phase 7 : tests
+- Phase 4 : gestion des tests et des erreurs (voir detail ci-dessous)
+- Phase 5 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
+- Phase 6 : operations devis (statuts, duplication, verrou)
+- Phase 7 : CMS leger
+- Phase 8 : qualite finale (compléter la couverture de tests, fixtures realistes)
 - Hors perimetre backend initial : generation PDF, envoi au client
 ```
+
+### Phase 4 — Gestion des tests et des erreurs (detail)
+
+Inseree avant le coeur metier : on ne veut pas empiler la logique la plus
+critique (calculs de devis) sur un backend sans filet, et le module d'admin
+laisse deja passer des erreurs brutes (500) qu'il faut rendre propres.
+
+**A. Socle de tests**
+- `symfony/test-pack` (PHPUnit + browser-kit + css-selector)
+- `dama/doctrine-test-bundle` (chaque test dans une transaction annulee : base
+  propre entre tests, rapide)
+- `ApiTestCase`/`Client` d'API Platform (deja fournis par `api-platform/core`,
+  rien a ajouter)
+- `.env.test`, `phpunit.xml.dist`
+
+**B. Tests de regression (Phases 1-3)**
+- Flux de connexion : `/api/login` (succes, echec, throttle -> 429),
+  `/login` (idem)
+- `access_control` deny-by-default sur `/api` et `/admin`
+- CORS : origine autorisee vs refusee
+- Garde-fous `UserCrudController` : anti-lockout (auto-retrait role admin,
+  auto-suppression, dernier admin) — notamment le cas **DELETE**, jamais
+  verifie manuellement (bloque par le CSRF gere en JS d'EasyAdmin, que
+  `curl` ne peut pas simuler ; le client de test Symfony n'a pas ce probleme)
+
+**C. Gestion des erreurs dans le back-office**
+- Aujourd'hui, les garde-fous (`UserCrudController::guardAgainstLockout()`,
+  longueur du mot de passe, mot de passe obligatoire a la creation) levent un
+  `\RuntimeException` brut -> page d'erreur 500 Symfony, pas un message
+  clair pour l'utilisateur.
+- Cible : une exception dediee (ex. `App\Exception\AdminGuardException`) +
+  un listener `kernel.exception` scope a `/admin` qui transforme cette
+  exception en message flash (`addFlash('danger', ...)`) et redirige vers la
+  page precedente, au lieu de crasher.
+- S'applique a tous les garde-fous deja en place et aux futurs (ex. Phase 6 :
+  empecher de desactiver un `Tva`/`Unite` reference par un devis existant).
+
+**D. Ensuite, a partir de la Phase 5**
+- Tests ecrits **en meme temps** que le code, pas apres :
+  `CalculateurDevis` et `GenerateurNumeroDevis` en tests unitaires purs
+  (aucune dependance framework/DB), le reste (entites, endpoints `/api/devis`)
+  en tests fonctionnels.
 
 ## Installation
 
