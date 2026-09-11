@@ -161,7 +161,8 @@ reserve a `ROLE_ADMIN`. Identifiants de dev : `admin@jc-reno.com` / `Password!`.
 Gestion des utilisateurs : mot de passe avec confirmation (12 caracteres
 minimum), impossible de se retirer soi-meme le role administrateur, de se
 supprimer soi-meme, ou de retirer le role au dernier administrateur restant.
-La derniere connexion au back-office est affichee dans la liste.
+La derniere connexion au back-office est affichee dans la liste. Ces regles
+bloquees affichent un message clair (pas d'erreur technique).
 
 ## 8. Tests
 
@@ -249,7 +250,7 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Entites de reference (Entreprise, TVA, Unite) + embeddable Adresse | ✅ fait |
 | Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
 | Socle de tests (PHPUnit, DAMA, regression Phases 1-3 : auth, /admin, garde-fous User) | ✅ fait |
-| Gestion des erreurs `/admin` (messages propres au lieu de 500) | ⬜ a faire |
+| Gestion des erreurs `/admin` (AdminGuardException, messages propres) | ✅ fait |
 | Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |

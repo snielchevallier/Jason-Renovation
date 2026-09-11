@@ -18,11 +18,8 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
  * ce probleme : on peut generer un jeton valide directement via le service
  * du conteneur, dans la meme session que le client.
  *
- * NOTE : les garde-fous levent aujourd'hui un \RuntimeException brut, donc
- * une violation se traduit par un 500 (l'operation est bien bloquee, mais
- * la page n'est pas propre). La Phase 4.C (gestion des erreurs /admin) doit
- * remplacer ce 500 par une redirection + message flash — mettre a jour les
- * assertions de statut ci-dessous a ce moment-la.
+ * Les garde-fous levent AdminGuardException, transformee par
+ * AdminGuardExceptionListener en redirection + message flash (jamais un 500).
  */
 final class UserCrudGuardTest extends WebTestCase
 {
@@ -47,8 +44,9 @@ final class UserCrudGuardTest extends WebTestCase
         $form['User[roles][0]']->untick(); // decoche ROLE_ADMIN (index 0), ROLE_USER (index 1) reste coche
         $this->client->submit($form);
 
-        self::assertResponseStatusCodeSame(500, 'le garde-fou doit bloquer l\'auto-retrait du role admin');
+        self::assertResponseRedirects();
         self::assertUserStillHasRole($admin->getId(), 'ROLE_ADMIN');
+        $this->assertFlashMessageContains('Impossible de retirer votre propre role administrateur.');
     }
 
     public function testAdminCannotDeleteOwnAccount(): void
@@ -58,8 +56,9 @@ final class UserCrudGuardTest extends WebTestCase
 
         $this->delete($admin->getId());
 
-        self::assertResponseStatusCodeSame(500, 'le garde-fou doit bloquer l\'auto-suppression');
+        self::assertResponseRedirects();
         self::assertUserExists($admin->getId());
+        $this->assertFlashMessageContains('Impossible de supprimer votre propre compte.');
     }
 
     public function testAdminCanDemoteAnotherAdminIfNotTheLastOne(): void
@@ -112,6 +111,12 @@ final class UserCrudGuardTest extends WebTestCase
         }
 
         $this->client->request('POST', \sprintf('/admin/user/%d/delete', $userId), ['token' => $token]);
+    }
+
+    private function assertFlashMessageContains(string $needle): void
+    {
+        $this->client->followRedirect();
+        self::assertStringContainsString($needle, (string) $this->client->getResponse()->getContent());
     }
 
     private static function assertUserExists(int $userId): void

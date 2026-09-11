@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\User;
+use App\Exception\AdminGuardException;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -96,13 +97,13 @@ class UserCrudController extends AbstractCrudController
 
         $currentUser = $this->getUser();
         if ($currentUser instanceof User && $currentUser->getId() === $entityInstance->getId()) {
-            throw new \RuntimeException('Impossible de supprimer votre propre compte.');
+            throw new AdminGuardException('Impossible de supprimer votre propre compte.');
         }
 
         if (\in_array('ROLE_ADMIN', $entityInstance->getRoles(), true)
             && $this->userRepository->countUsersWithRole('ROLE_ADMIN') <= 1
         ) {
-            throw new \RuntimeException('Impossible de supprimer le dernier administrateur.');
+            throw new AdminGuardException('Impossible de supprimer le dernier administrateur.');
         }
 
         parent::deleteEntity($entityManager, $entityInstance);
@@ -120,11 +121,11 @@ class UserCrudController extends AbstractCrudController
 
         $currentUser = $this->getUser();
         if ($currentUser instanceof User && $currentUser->getId() === $user->getId()) {
-            throw new \RuntimeException('Impossible de retirer votre propre role administrateur.');
+            throw new AdminGuardException('Impossible de retirer votre propre role administrateur.');
         }
 
         if (0 === $this->userRepository->countUsersWithRole('ROLE_ADMIN')) {
-            throw new \RuntimeException('Impossible de retirer ce role : il doit rester au moins un administrateur.');
+            throw new AdminGuardException('Impossible de retirer ce role : il doit rester au moins un administrateur.');
         }
     }
 
@@ -134,14 +135,14 @@ class UserCrudController extends AbstractCrudController
 
         if (null === $plainPassword || '' === $plainPassword) {
             if ($isNew) {
-                throw new \RuntimeException('Le mot de passe est obligatoire a la creation d\'un utilisateur.');
+                throw new AdminGuardException('Le mot de passe est obligatoire a la creation d\'un utilisateur.');
             }
 
             return; // edition sans changement de mot de passe
         }
 
         if (mb_strlen($plainPassword) < self::PASSWORD_MIN_LENGTH) {
-            throw new \RuntimeException(\sprintf('Le mot de passe doit contenir au moins %d caracteres.', self::PASSWORD_MIN_LENGTH));
+            throw new AdminGuardException(\sprintf('Le mot de passe doit contenir au moins %d caracteres.', self::PASSWORD_MIN_LENGTH));
         }
 
         $user->setPassword($this->passwordHasher->hashPassword($user, $plainPassword));

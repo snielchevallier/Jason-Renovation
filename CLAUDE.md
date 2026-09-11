@@ -214,7 +214,7 @@ Back-office EasyAdmin (`easycorp/easyadmin-bundle`) sur `/admin`, firewall
 ## Etat actuel
 
 ```text
-Phase courante : Phase 3 — Module d'administration (backend) — TERMINEE
+Phase courante : Phase 4 — Gestion des tests et des erreurs (backend) — TERMINEE
 
 Fait (Phase 1) :
 - Docker Compose (3 services), environnement verifie
@@ -238,8 +238,14 @@ Fait (Phase 3) :
 - Garde-fou anti-lockout, validation propre, lastLoginAt
 - CSRF de session partout (stateless desactive)
 
+Fait (Phase 4) :
+- Socle PHPUnit + dama/doctrine-test-bundle (`composer test`, voir detail ci-dessous)
+- 12 tests de regression (auth API, acces /admin, garde-fous User) — dont le
+  DELETE anti-dernier-admin, jamais verifiable avant (CSRF gere en JS d'EasyAdmin)
+- Gestion propre des erreurs /admin (AdminGuardException + listener, flash
+  message au lieu d'un 500)
+
 A faire (phases suivantes) :
-- Phase 4 : gestion des tests et des erreurs (voir detail ci-dessous)
 - Phase 5 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
 - Phase 6 : operations devis (statuts, duplication, verrou)
 - Phase 7 : CMS leger
@@ -291,21 +297,21 @@ laisse deja passer des erreurs brutes (500) qu'il faut rendre propres.
   memoire reste mutee bien que rien n'ait ete flushe. Toujours
   `$entityManager->clear()` avant de relire l'etat reel pour une assertion.
 
-**C. Gestion des erreurs dans le back-office**
-- Aujourd'hui, les garde-fous (`UserCrudController::guardAgainstLockout()`,
-  longueur du mot de passe, mot de passe obligatoire a la creation) levent un
-  `\RuntimeException` brut -> page d'erreur 500 Symfony, pas un message
-  clair pour l'utilisateur.
-- Cible : une exception dediee (ex. `App\Exception\AdminGuardException`) +
-  un listener `kernel.exception` scope a `/admin` qui transforme cette
-  exception en message flash (`addFlash('danger', ...)`) et redirige vers la
-  page precedente, au lieu de crasher.
-- S'applique a tous les garde-fous deja en place et aux futurs (ex. Phase 6 :
-  empecher de desactiver un `Tva`/`Unite` reference par un devis existant).
-- **A faire en meme temps** : `UserCrudGuardTest` attend aujourd'hui un `500`
-  (comportement reel actuel) sur les cas bloques — mettre a jour ces
-  assertions vers le comportement propre (redirection + flash) une fois C
-  implementee.
+**C. Gestion des erreurs dans le back-office** — FAIT
+- `App\Exception\AdminGuardException` (`extends \RuntimeException`) : a lever
+  depuis les controleurs EasyAdmin pour toute regle metier/garde-fou, jamais
+  une `\RuntimeException` brute.
+- `App\EventListener\AdminGuardExceptionListener` (`kernel.exception`,
+  priorite 10) : scope aux requetes `/admin`, ajoute un message flash
+  (`danger`) via la session et redirige (referer si present, sinon la route
+  `admin`), au lieu de laisser passer un 500. EasyAdmin affiche les flashs
+  nativement (`templates/flash_messages.html.twig`, deja inclus dans son
+  layout) : rien a faire cote template.
+- Tous les garde-fous de `UserCrudController` (anti-lockout, mot de passe)
+  utilisent desormais cette exception. `UserCrudGuardTest` verifie la
+  redirection + le contenu du message flash (plus de `500` attendu).
+- A reutiliser pour tout futur garde-fou (ex. Phase 6 : empecher de
+  desactiver un `Tva`/`Unite` reference par un devis existant).
 
 **D. Ensuite, a partir de la Phase 5**
 - Tests ecrits **en meme temps** que le code, pas apres :
