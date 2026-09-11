@@ -4,12 +4,15 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
+#[UniqueEntity(fields: ['email'], message: 'Un compte existe deja avec cet email.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -18,6 +21,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
+    #[Assert\NotBlank]
+    #[Assert\Email]
     private ?string $email = null;
 
     /**
@@ -33,6 +38,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
     private ?string $nom = null;
 
     /**
@@ -41,6 +47,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * puis le vide immediatement apres.
      */
     private ?string $plainPassword = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lastLoginAt = null;
 
     public function getId(): ?int
     {
@@ -114,6 +123,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setNom(string $nom): static
     {
         $this->nom = $nom;
+
+        return $this;
+    }
+
+    public function getLastLoginAt(): ?\DateTimeImmutable
+    {
+        return $this->lastLoginAt;
+    }
+
+    public function setLastLoginAt(?\DateTimeImmutable $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
 
         return $this;
     }
