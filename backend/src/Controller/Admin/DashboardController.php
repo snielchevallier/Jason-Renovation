@@ -28,7 +28,8 @@ class DashboardController extends AbstractDashboardController
     public function configureMenuItems(): iterable
     {
         yield MenuItem::linkToDashboard('Tableau de bord', 'fa fa-home');
-        // Les entrees CRUD (Entreprise, TVA, Unites, Utilisateurs) sont ajoutees
-        // au fil des commits suivants.
+        yield MenuItem::linkTo(TvaCrudController::class, 'Taux de TVA', 'fa fa-percent');
+        yield MenuItem::linkTo(UniteCrudController::class, 'Unites', 'fa fa-ruler');
+        // Entreprise et Utilisateurs arrivent aux commits suivants.
     }
 }
