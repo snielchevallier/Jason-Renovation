@@ -214,7 +214,7 @@ Back-office EasyAdmin (`easycorp/easyadmin-bundle`) sur `/admin`, firewall
 ## Etat actuel
 
 ```text
-Phase courante : Phase 3 — Module d'administration (backend) — TERMINEE
+Phase courante : Phase 4 — Gestion des tests et des erreurs (backend) — TERMINEE
 
 Fait (Phase 1) :
 - Docker Compose (3 services), environnement verifie
@@ -238,13 +238,86 @@ Fait (Phase 3) :
 - Garde-fou anti-lockout, validation propre, lastLoginAt
 - CSRF de session partout (stateless desactive)
 
+Fait (Phase 4) :
+- Socle PHPUnit + dama/doctrine-test-bundle (`composer test`, voir detail ci-dessous)
+- 12 tests de regression (auth API, acces /admin, garde-fous User) — dont le
+  DELETE anti-dernier-admin, jamais verifiable avant (CSRF gere en JS d'EasyAdmin)
+- Gestion propre des erreurs /admin (AdminGuardException + listener, flash
+  message au lieu d'un 500)
+
 A faire (phases suivantes) :
-- Phase 4 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
-- Phase 5 : operations devis (statuts, duplication, verrou)
-- Phase 6 : CMS leger
-- Phase 7 : tests
+- Phase 5 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
+- Phase 6 : operations devis (statuts, duplication, verrou)
+- Phase 7 : CMS leger
+- Phase 8 : qualite finale (compléter la couverture de tests, fixtures realistes)
 - Hors perimetre backend initial : generation PDF, envoi au client
 ```
+
+### Phase 4 — Gestion des tests et des erreurs (detail)
+
+Inseree avant le coeur metier : on ne veut pas empiler la logique la plus
+critique (calculs de devis) sur un backend sans filet, et le module d'admin
+laisse deja passer des erreurs brutes (500) qu'il faut rendre propres.
+
+**A. Socle de tests** — FAIT
+- `symfony/test-pack` (PHPUnit 13 + browser-kit + css-selector), `symfony/http-client`
+  (requis par le client de test API Platform)
+- `dama/doctrine-test-bundle` (recipe en `recipes-contrib`, ignoree par notre
+  `allow-contrib: false` : bundle enregistre a la main dans `bundles.php`,
+  `test` uniquement, + `<extensions><bootstrap class="DAMA\...\PHPUnitExtension"/>`
+  dans `phpunit.dist.xml`). Chaque test tourne dans une transaction annulee.
+- `ApiTestCase`/`Client` d'API Platform (deja fournis par `api-platform/core`).
+  Notre `App\Tests\Support\ApiTestCase` fixe `$alwaysBootKernel = true`
+  (evite un avertissement de depreciation qui fait echouer la suite avec
+  `failOnDeprecation="true"`).
+- **Piege a connaitre** : `docker compose exec backend php bin/phpunit` tourne
+  en `APP_ENV=dev`, pas `test` — `KernelTestCase::createKernel()` lit
+  `$_ENV['APP_ENV']` avant `$_SERVER['APP_ENV']`, et le `force="true"` de
+  `phpunit.dist.xml` ne pose que `$_SERVER`. La vraie variable d'env du
+  conteneur (`dev`, via `compose.yaml`) gagne. Toujours lancer
+  `docker compose exec backend composer test` (script `composer.json` qui
+  fixe `APP_ENV=test` correctement), jamais `bin/phpunit` nu.
+- Base de test : `doctrine:database:create --env=test` puis
+  `doctrine:migrations:migrate --env=test` (a faire une fois).
+
+**B. Tests de regression (Phases 1-3)** — FAIT
+- `tests/Functional/AuthenticationTest.php` : `/api/login` (succes, echec,
+  throttle -> 429), deny-by-default sur `/api`, `/api/docs` public
+- `tests/Functional/AdminAccessTest.php` : deny-by-default sur `/admin`,
+  formulaire `/login`, acces admin vs 403 non-admin
+- `tests/Functional/UserCrudGuardTest.php` : garde-fous anti-lockout —
+  **y compris le DELETE**, jamais verifiable manuellement (le bouton
+  d'EasyAdmin recupere son jeton CSRF en JS, que `curl` ne simule pas). Le
+  client de test genere le jeton via le service du conteneur en repoussant
+  temporairement la requete courante sur le `request_stack` (le
+  `CsrfTokenManager` a besoin d'une requete "active" pour trouver la session).
+- `tests/Support/CreatesUsers.php` : trait partage pour creer des users de
+  test directement en base (sans passer par le back-office).
+- Piege identite-map : apres une requete qui echoue (garde-fou), l'entite en
+  memoire reste mutee bien que rien n'ait ete flushe. Toujours
+  `$entityManager->clear()` avant de relire l'etat reel pour une assertion.
+
+**C. Gestion des erreurs dans le back-office** — FAIT
+- `App\Exception\AdminGuardException` (`extends \RuntimeException`) : a lever
+  depuis les controleurs EasyAdmin pour toute regle metier/garde-fou, jamais
+  une `\RuntimeException` brute.
+- `App\EventListener\AdminGuardExceptionListener` (`kernel.exception`,
+  priorite 10) : scope aux requetes `/admin`, ajoute un message flash
+  (`danger`) via la session et redirige (referer si present, sinon la route
+  `admin`), au lieu de laisser passer un 500. EasyAdmin affiche les flashs
+  nativement (`templates/flash_messages.html.twig`, deja inclus dans son
+  layout) : rien a faire cote template.
+- Tous les garde-fous de `UserCrudController` (anti-lockout, mot de passe)
+  utilisent desormais cette exception. `UserCrudGuardTest` verifie la
+  redirection + le contenu du message flash (plus de `500` attendu).
+- A reutiliser pour tout futur garde-fou (ex. Phase 6 : empecher de
+  desactiver un `Tva`/`Unite` reference par un devis existant).
+
+**D. Ensuite, a partir de la Phase 5**
+- Tests ecrits **en meme temps** que le code, pas apres :
+  `CalculateurDevis` et `GenerateurNumeroDevis` en tests unitaires purs
+  (aucune dependance framework/DB), le reste (entites, endpoints `/api/devis`)
+  en tests fonctionnels.
 
 ## Installation
 
