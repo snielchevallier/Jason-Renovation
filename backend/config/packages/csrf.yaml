@@ -1,0 +1,14 @@
+# CSRF stateless (recipe symfony/form) : necessite un controleur JS qui injecte
+# le vrai jeton au submit. Les pages EasyAdmin embarquent ce JS ("submit"),
+# mais notre formulaire de connexion (templates/security/login.html.twig) est
+# une page sans pipeline JS : "authenticate" et "logout" restent en CSRF
+# classique (session), sinon le jeton reste au placeholder et la connexion
+# echoue toujours.
+framework:
+    form:
+        csrf_protection:
+            token_id: submit
+
+    csrf_protection:
+        stateless_token_ids:
+            - submit

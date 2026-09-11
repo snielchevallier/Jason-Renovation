@@ -48,7 +48,7 @@ security:
                 login_path: app_login
                 check_path: app_login
                 enable_csrf: true
-                default_target_path: admin_home
+                default_target_path: admin
             logout:
                 path: app_logout
             # Meme protection anti brute-force que /api/login.
