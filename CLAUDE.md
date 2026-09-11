@@ -167,12 +167,25 @@ Deux firewalls (`backend/config/packages/security.yaml`) :
   `JWT_PASSPHRASE` vient de `compose.yaml` (depuis le `.env` racine).
 - Comptes : crees par `UserFixtures`. Admin de dev = `admin@jc-reno.com` / `Password!`.
 
+## Entites de reference (Phase 2)
+
+| Entite | Cle | Contenu | API |
+|--------|-----|---------|-----|
+| `Tva` | `taux` unique (decimal 5,2) | libelle, actif, position | `/api/tvas` lecture seule, seedee par migration (20/10/5,5/0 %) |
+| `Unite` | `code` unique | libelle, actif, position | `/api/unites` lecture seule, seedee par migration (u, forfait, ens, m2, ml, m3, kg, t, h, j, L) |
+| `Entreprise` | singleton (1 ligne) | nom, siret, TVA intracom, `adresse` (embeddable), telephone, email, mentionsLegales, conditionsPaiement, logo, delaiValiditeDevisJours | `/api/entreprises` lecture seule, ligne creee par migration a completer via le back-office |
+
+- `Adresse` (`src/Entity/Embeddable/Adresse.php`) : objet embarque reutilisable, prevu pour `Client` et `Chantier` en Phase 4.
+- `actif`/`position` sur `Tva`/`Unite` : on ne supprime jamais une valeur utilisee par un devis historique, on la desactive.
+- Format API par defaut = `application/ld+json` (Hydra) ; `application/json` disponible via l'en-tete `Accept` pour le frontend. Les champs `null` sont omis de la sortie.
+- Ecriture de ces 3 entites : reservee au back-office (EasyAdmin, Phase 3), pas d'endpoint `/api` en ecriture.
+
 ## Etat actuel
 
 ```text
-Phase courante : Phase 1 — Socle de securite (backend) — TERMINEE
+Phase courante : Phase 2 — Entites de reference (backend) — TERMINEE
 
-Fait :
+Fait (Phase 1) :
 - Docker Compose (3 services), environnement verifie
 - Auth API : entite User, POST /api/login -> JWT, firewall /api stateless
 - access_control deny-by-default
@@ -182,8 +195,13 @@ Fait :
 - Swagger UI / ReDoc actives
 - Fixtures de dev (compte admin)
 
+Fait (Phase 2) :
+- Entites de reference Tva, Unite, Entreprise (voir tableau ci-dessus)
+- Embeddable Adresse
+- symfony/expression-language (securite par operation API Platform)
+- Format JSON disponible a cote de JSON-LD
+
 A faire (phases suivantes) :
-- Phase 2 : entites de reference (Entreprise, TVA, Unite) + fixtures
 - Phase 3 : module d'administration (EasyAdmin)
 - Phase 4 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
 - Phase 5 : operations devis (statuts, duplication, verrou)
