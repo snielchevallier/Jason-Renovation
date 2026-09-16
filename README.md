@@ -176,6 +176,7 @@ reserve a `ROLE_ADMIN`. Identifiants de dev : `admin@jc-reno.com` / `Password!`.
 
 | Section | Pour |
 |---------|------|
+| Clients | gestion des clients (meme perimetre que `/api/clients`) |
 | Entreprise | edition de la fiche entreprise (singleton, pas de creation/suppression) |
 | Taux de TVA | gestion des taux (`actif`/`position`) |
 | Unites | gestion des unites de mesure (`actif`/`position`) |
@@ -274,7 +275,7 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
 | Socle de tests (PHPUnit, DAMA, regression Phases 1-3 : auth, /admin, garde-fous User) | ✅ fait |
 | Gestion des erreurs `/admin` (AdminGuardException, messages propres) | ✅ fait |
-| Coeur metier : `Client` (API CRUD + tests) | ✅ fait |
+| Coeur metier : `Client` (API CRUD + back-office + tests) | ✅ fait |
 | Coeur metier : Chantier, Catalogue, Devis, Lignes | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |

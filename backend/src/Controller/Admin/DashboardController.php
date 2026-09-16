@@ -38,6 +38,14 @@ class DashboardController extends AbstractDashboardController
     {
         yield MenuItem::linkToDashboard('Tableau de bord', 'fa fa-home');
 
+        // Metier : memes entites que celles exposees a /api, geree ici
+        // comme filet de secours en attendant / en plus du frontend.
+        yield MenuItem::section('Metier', 'fa fa-briefcase');
+        yield MenuItem::linkTo(ClientCrudController::class, 'Clients', 'fa fa-users');
+        // Chantier, catalogue de prestations, devis : a suivre.
+
+        yield MenuItem::section('Administration', 'fa fa-cog');
+
         // Entreprise est un singleton : le menu pointe directement sur
         // l'edition de l'unique ligne, pas sur une liste.
         $entreprise = $this->entrepriseRepository->get();

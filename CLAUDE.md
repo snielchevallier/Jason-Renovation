@@ -218,6 +218,12 @@ Back-office EasyAdmin (`easycorp/easyadmin-bundle`) sur `/admin`, firewall
   (`AdminUrlGenerator`), jamais sur une liste.
 - CRUD : `TvaCrudController`, `UniteCrudController`, `EntrepriseCrudController`
   (NEW/DELETE/INDEX desactives — singleton), `UserCrudController`.
+- Menu decoupe en deux sections : « Metier » (entites de la Phase 5, a
+  completer au fil des entites) et « Administration » (reference + comptes).
+- `ClientCrudController` : meme perimetre que `/api/clients`. Le back-office
+  est un client de plus de l'API metier, pas seulement un editeur de donnees
+  de reference. Les champs de l'embeddable se declarent en notation pointee
+  (`TextField::new('adresse.ville')`), en `onlyOnForms()`.
 - `UserCrudController` : `plainPassword` (propriete transitoire non persistee,
   pas de colonne Doctrine) hashee dans `password` via
   `UserPasswordHasherInterface`, dans `persistEntity()`/`updateEntity()`.
@@ -271,6 +277,7 @@ Fait (Phase 4) :
 En cours (Phase 5) :
 - Client : entite + embeddable Adresse ecrivable, /api/clients CRUD complet,
   TimestampableTrait reutilisable, 9 tests fonctionnels (suite a 21 tests)
+- Back-office : ClientCrudController, menu decoupe Metier / Administration
 - Reste : Chantier, Catalogue de prestations, Devis, Lignes de devis
 
 A faire (phases suivantes) :
