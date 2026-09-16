@@ -180,10 +180,33 @@ Deux firewalls (`backend/config/packages/security.yaml`) :
 | `Unite` | `code` unique | libelle, actif, position | `/api/unites` lecture seule, seedee par migration (u, forfait, ens, m2, ml, m3, kg, t, h, j, L) |
 | `Entreprise` | singleton (1 ligne) | nom, siret, TVA intracom, `adresse` (embeddable), telephone, email, mentionsLegales, conditionsPaiement, logo, delaiValiditeDevisJours | `/api/entreprises` lecture seule, ligne creee par migration a completer via le back-office |
 
-- `Adresse` (`src/Entity/Embeddable/Adresse.php`) : objet embarque reutilisable, prevu pour `Client` et `Chantier` en Phase 4.
+- `Adresse` (`src/Entity/Embeddable/Adresse.php`) : objet embarque reutilisable, utilise par `Client` (Phase 5) et prevu pour `Chantier`.
 - `actif`/`position` sur `Tva`/`Unite` : on ne supprime jamais une valeur utilisee par un devis historique, on la desactive.
 - Format API par defaut = `application/ld+json` (Hydra) ; `application/json` disponible via l'en-tete `Accept` pour le frontend. Les champs `null` sont omis de la sortie.
 - Ecriture de ces 3 entites : reservee au back-office (EasyAdmin, Phase 3), pas d'endpoint `/api` en ecriture.
+
+## Entites metier (Phase 5)
+
+Contrairement aux entites de reference, elles sont **ecrites depuis l'API** par
+le frontend (`security: "is_granted('ROLE_USER')"` sur la ressource).
+
+| Entite | Contenu | API |
+|--------|---------|-----|
+| `Client` | nom (requis), email, telephone, `adresse` (embeddable), notes, timestamps | `/api/clients` CRUD complet, tri par `nom`, `SearchFilter` partiel sur `nom`/`email` |
+
+- `Trait\TimestampableTrait` : `createdAt`/`updatedAt` via `PrePersist`/`PreUpdate`,
+  groupe de lecture `timestamps:read`, jamais ecrits par le client.
+  **L'entite qui l'utilise doit porter `#[ORM\HasLifecycleCallbacks]`** — sans
+  cet attribut Doctrine ignore silencieusement les callbacks (colonnes NULL en
+  base). A reutiliser pour `Chantier`, `Devis`, etc.
+- Groupes de serialisation : `<entite>:read` / `<entite>:write`, plus les
+  groupes de l'embeddable (`adresse:read`/`adresse:write`) listes dans le
+  contexte de la ressource. `Adresse` a gagne `adresse:write` avec `Client` :
+  elle etait en lecture seule tant qu'aucune ressource ne l'ecrivait.
+- Tests : `tests/Functional/ClientApiTest.php` (protection, CRUD, validation,
+  aller-retour de l'adresse embarquee, filtre). `tests/Support/AuthenticatesApiClient.php`
+  fournit un client de test deja porteur d'un JWT — a reutiliser pour toute
+  future ressource `/api`.
 
 ## Module d'administration (Phase 3)
 
@@ -214,7 +237,7 @@ Back-office EasyAdmin (`easycorp/easyadmin-bundle`) sur `/admin`, firewall
 ## Etat actuel
 
 ```text
-Phase courante : Phase 4 — Gestion des tests et des erreurs (backend) — TERMINEE
+Phase courante : Phase 5 — Coeur metier (backend) — EN COURS (Client fait)
 
 Fait (Phase 1) :
 - Docker Compose (3 services), environnement verifie
@@ -245,8 +268,12 @@ Fait (Phase 4) :
 - Gestion propre des erreurs /admin (AdminGuardException + listener, flash
   message au lieu d'un 500)
 
+En cours (Phase 5) :
+- Client : entite + embeddable Adresse ecrivable, /api/clients CRUD complet,
+  TimestampableTrait reutilisable, 9 tests fonctionnels (suite a 21 tests)
+- Reste : Chantier, Catalogue de prestations, Devis, Lignes de devis
+
 A faire (phases suivantes) :
-- Phase 5 : coeur metier (Client, Chantier, Catalogue, Devis, Lignes)
 - Phase 6 : operations devis (statuts, duplication, verrou)
 - Phase 7 : CMS leger
 - Phase 8 : qualite finale (compléter la couverture de tests, fixtures realistes)

@@ -14,23 +14,23 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class Adresse
 {
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['adresse:read'])]
+    #[Groups(['adresse:read', 'adresse:write'])]
     private ?string $ligne1 = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['adresse:read'])]
+    #[Groups(['adresse:read', 'adresse:write'])]
     private ?string $ligne2 = null;
 
     #[ORM\Column(length: 16, nullable: true)]
-    #[Groups(['adresse:read'])]
+    #[Groups(['adresse:read', 'adresse:write'])]
     private ?string $codePostal = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['adresse:read'])]
+    #[Groups(['adresse:read', 'adresse:write'])]
     private ?string $ville = null;
 
     #[ORM\Column(length: 100, nullable: true, options: ['default' => 'France'])]
-    #[Groups(['adresse:read'])]
+    #[Groups(['adresse:read', 'adresse:write'])]
     private ?string $pays = 'France';
 
     public function getLigne1(): ?string

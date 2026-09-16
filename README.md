@@ -127,10 +127,13 @@ curl http://localhost:8000/api/... -H "Authorization: Bearer eyJ..."
 **Back-office (`/admin`)** — session + formulaire de connexion sur
 `http://localhost:8000/login`, reserve a `ROLE_ADMIN`. Detail en §7.
 
-## 6. Donnees de reference
+## 6. Ressources de l'API
 
-Trois ressources en lecture seule (authentification requise, ecriture reservee
-au back-office) :
+Toutes demandent un token JWT (§5).
+
+### Donnees de reference
+
+Trois ressources en lecture seule (ecriture reservee au back-office) :
 
 | Ressource | Contenu |
 |-----------|---------|
@@ -144,6 +147,26 @@ enveloppe. Les champs `null` sont omis de la reponse.
 
 ```bash
 curl http://localhost:8000/api/tvas -H "Authorization: Bearer <token>" -H "Accept: application/json"
+```
+
+### Donnees metier
+
+| Ressource | Operations | Contenu |
+|-----------|------------|---------|
+| `/api/clients` | liste, detail, creation, modification, suppression | client de l'entreprise : nom, email, telephone, adresse, notes |
+
+L'adresse est un objet imbrique (`ligne1`, `ligne2`, `codePostal`, `ville`,
+`pays` — « France » par defaut). Les dates `createdAt` / `updatedAt` sont
+posees par le serveur, jamais par le client. La liste se filtre par
+correspondance partielle sur `nom` et `email`.
+
+```bash
+curl -X POST http://localhost:8000/api/clients \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/ld+json" \
+  -d '{"nom":"Dupont Maconnerie","email":"contact@dupont.fr",
+       "adresse":{"ligne1":"12 rue des Lilas","codePostal":"35000","ville":"Rennes"}}'
+
+curl "http://localhost:8000/api/clients?nom=Dupont" -H "Authorization: Bearer <token>"
 ```
 
 ## 7. Back-office
@@ -251,7 +274,8 @@ FrankenPHP 1.12, Next 16) et figees par `backend/composer.lock` et
 | Module d'administration (EasyAdmin : Entreprise, TVA, Unites, Utilisateurs) | ✅ fait |
 | Socle de tests (PHPUnit, DAMA, regression Phases 1-3 : auth, /admin, garde-fous User) | ✅ fait |
 | Gestion des erreurs `/admin` (AdminGuardException, messages propres) | ✅ fait |
-| Coeur metier (Client, Chantier, Catalogue, Devis, Lignes) | ⬜ a faire |
+| Coeur metier : `Client` (API CRUD + tests) | ✅ fait |
+| Coeur metier : Chantier, Catalogue, Devis, Lignes | ⬜ a faire |
 | Operations devis (statuts, duplication, verrou) | ⬜ a faire |
 | CMS leger                                 | ⬜ a faire |
 | Qualite finale (couverture de tests, fixtures realistes) | ⬜ a faire |
